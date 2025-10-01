@@ -1,23 +1,1274 @@
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardápio de Bebidas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        body { box-sizing: border-box; }
+        .font-playfair { font-family: 'Playfair Display', serif; }
+        .font-inter { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .category-btn { transition: all 0.3s ease; }
+        .category-btn.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .price-tag { background: linear-gradient(135deg, #1f2937 0%, #374151 100%); }
+        .ingredient-tag { background: rgba(102, 126, 234, 0.1); color: #667eea; }
+        .text-shadow { text-shadow: 2px 2px 4px rgba(0,0,0,0.7); }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); backdrop-filter: blur(5px); }
+        .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 90%; max-height: 90%; border-radius: 15px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+        .close { position: absolute; top: 15px; right: 25px; color: white; font-size: 35px; font-weight: bold; cursor: pointer; z-index: 1001; background: rgba(0,0,0,0.5); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
+        .close:hover { background: rgba(255,255,255,0.2); transform: scale(1.1); }
+        .zoomable { cursor: pointer; transition: all 0.3s ease; }
+        .zoomable:hover { transform: scale(1.05); }
+        .firebase-status { position: fixed; top: 20px; right: 20px; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; z-index: 100; }
+        .firebase-connected { background: #10b981; color: white; }
+        .firebase-disconnected { background: #ef4444; color: white; }
+        .firebase-connecting { background: #f59e0b; color: white; }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter">
+    <!-- Status do Firebase -->
+    <div id="firebaseStatus" class="firebase-status firebase-connecting">
+        🟡 Firebase: Verificando...
+    </div>
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyDYtzeQ0oGB1XT0J-ufSi7sOTHQVjmoGvI",
-    authDomain: "bebidasdrink-23216.firebaseapp.com",
-    projectId: "bebidasdrink-23216",
-    storageBucket: "bebidasdrink-23216.firebasestorage.app",
-    messagingSenderId: "245032874181",
-    appId: "1:245032874181:web:c2c14207b833e3f02140ac",
-    measurementId: "G-RDTHQBJHHQ"
-  };
+    <header class="text-white py-16 relative overflow-hidden">
+        <div class="absolute inset-0" style="background-image: url('https://img.cdndsgni.com/preview/10576301.jpg'); background-size: cover; background-position: center; background-repeat: no-repeat; filter: blur(5px); transform: scale(1.1);"></div>
+        <div class="absolute inset-0 bg-black bg-opacity-60"></div>
+        <div class="container mx-auto px-6 text-center relative z-10">
+            <h1 class="font-playfair text-5xl md:text-6xl font-bold mb-4 text-shadow">Carta de Bebidas</h1>
+            <p class="text-xl opacity-90 max-w-2xl mx-auto text-shadow">Descubra nossa seleção especial de drinks artesanais, cervejas premium e bebidas refrescantes</p>
+        </div>
+    </header>
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-6">
+            <div class="flex justify-center py-4 border-b border-gray-200">
+                <div class="relative w-full max-w-md">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    <input type="text" id="searchInput" placeholder="Pesquisar drinks..." class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-full leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm" onkeyup="searchDrinks()">
+                </div>
+            </div>
+
+            <div class="flex flex-wrap justify-center gap-2 py-4">
+                <button onclick="showCategory('all')" class="category-btn active px-6 py-3 rounded-full font-medium text-sm">Todos</button>
+                <button onclick="showCategory('caipirinhas')" class="category-btn px-6 py-3 rounded-full font-medium text-sm bg-gray-100 text-gray-700 hover:bg-gray-200">Caipirinhas</button>
+                <button onclick="showCategory('especiais')" class="category-btn px-6 py-3 rounded-full font-medium text-sm bg-gray-100 text-gray-700 hover:bg-gray-200">Drinks Especiais</button>
+                <button onclick="showCategory('cervejas')" class="category-btn px-6 py-3 rounded-full font-medium text-sm bg-gray-100 text-gray-700 hover:bg-gray-200">Cervejas</button>
+                <button onclick="showCategory('sucos')" class="category-btn px-6 py-3 rounded-full font-medium text-sm bg-gray-100 text-gray-700 hover:bg-gray-200">Sucos</button>
+                <button onclick="showCategory('refrigerantes')" class="category-btn px-6 py-3 rounded-full font-medium text-sm bg-gray-100 text-gray-700 hover:bg-gray-200">Refrigerantes</button>
+                <button onclick="showCategory('energeticos')" class="category-btn px-6 py-3 rounded-full font-medium text-sm bg-gray-100 text-gray-700 hover:bg-gray-200">Energéticos & Águas</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-6 py-12">
+        <!-- Seção Caipirinhas -->
+        <section id="caipirinhas" class="category-section mb-16">
+            <h2 class="font-playfair text-4xl font-bold text-gray-800 mb-8 text-center">Caipirinhas & Caipiroskas</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Produtos serão carregados aqui -->
+            </div>
+        </section>
+
+        <!-- Seção Drinks Especiais -->
+        <section id="especiais" class="category-section mb-16">
+            <h2 class="font-playfair text-4xl font-bold text-gray-800 mb-8 text-center">Drinks Especiais</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Produtos serão carregados aqui -->
+            </div>
+        </section>
+
+        <!-- Seção Cervejas -->
+        <section id="cervejas" class="category-section mb-16">
+            <h2 class="font-playfair text-4xl font-bold text-gray-800 mb-8 text-center">Cervejas</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Produtos serão carregados aqui -->
+            </div>
+        </section>
+
+        <!-- Seção Sucos -->
+        <section id="sucos" class="category-section mb-16">
+            <h2 class="font-playfair text-4xl font-bold text-gray-800 mb-8 text-center">Sucos Naturais</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Produtos serão carregados aqui -->
+            </div>
+        </section>
+
+        <!-- Seção Refrigerantes -->
+        <section id="refrigerantes" class="category-section mb-16">
+            <h2 class="font-playfair text-4xl font-bold text-gray-800 mb-8 text-center">Refrigerantes</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Produtos serão carregados aqui -->
+            </div>
+        </section>
+
+        <!-- Seção Energéticos & Águas -->
+        <section id="energeticos" class="category-section mb-16">
+            <h2 class="font-playfair text-4xl font-bold text-gray-800 mb-8 text-center">Energéticos & Águas</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Produtos serão carregados aqui -->
+            </div>
+        </section>
+    </main>
+
+    <div id="imageModal" class="modal">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <img class="modal-content" id="modalImage">
+    </div>
+
+    <footer class="gradient-bg text-white py-12">
+        <div class="container mx-auto px-6 text-center">
+            <p class="text-lg opacity-90">Desfrute com moderação • Bebidas alcoólicas não devem ser consumidas por menores de 18 anos</p>
+        </div>
+    </footer>
+
+    <!-- Botões Admin -->
+    <div class="fixed bottom-4 right-4 flex flex-col gap-2">
+        <button id="siteConfigBtn" onclick="openSiteConfig()" class="bg-blue-600 text-white px-3 py-2 rounded-full text-xs hover:bg-blue-700 transition-all duration-300 shadow-lg" style="display: none;">
+            ⚙️ Configurações
+        </button>
+        <button id="addProductBtn" onclick="openAddProduct()" class="bg-green-600 text-white px-3 py-2 rounded-full text-xs hover:bg-green-700 transition-all duration-300 shadow-lg" style="display: none;">
+            ➕ Novo Produto
+        </button>
+        <button id="exitEditorBtn" onclick="exitAdminMode()" class="bg-red-600 text-white px-3 py-2 rounded-full text-xs hover:bg-red-700 transition-all duration-300 shadow-lg" style="display: none;">
+            Sair Editor
+        </button>
+
+        <button onclick="showAdminLogin()" class="bg-gray-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-sm hover:bg-gray-700 transition-all duration-300 shadow-lg">
+            🔐
+        </button>
+    </div>
+
+    <!-- Modal Login Admin -->
+    <div id="adminModal" class="modal">
+        <div class="modal-content bg-white p-8 rounded-2xl max-w-md w-full mx-4">
+            <h3 class="font-playfair text-2xl font-bold text-gray-800 mb-6 text-center">Acesso Administrativo</h3>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-medium mb-2">Senha:</label>
+                <input type="password" id="adminPassword" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Digite a senha">
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeAdminModal()" class="flex-1 px-4 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">Cancelar</button>
+                <button onclick="checkAdminPassword()" class="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">Entrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Configurações do Site -->
+    <div id="siteConfigModal" class="modal">
+        <div class="modal-content bg-white p-6 rounded-2xl max-w-2xl w-full mx-4 max-h-90vh overflow-y-auto">
+            <h3 class="font-playfair text-2xl font-bold text-gray-800 mb-6 text-center">Configurações do Site</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Nome do Site:</label>
+                    <input type="text" id="configSiteName" class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Subtítulo:</label>
+                    <textarea id="configSiteSubtitle" class="w-full px-3 py-2 border rounded-lg" rows="2"></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">URL da Imagem do Header:</label>
+                    <input type="url" id="configHeaderImage" class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Texto do Footer:</label>
+                    <textarea id="configFooterText" class="w-full px-3 py-2 border rounded-lg" rows="2"></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Senha do Admin:</label>
+                    <input type="password" id="configAdminPassword" class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Placeholder da Busca:</label>
+                    <input type="text" id="configSearchPlaceholder" class="w-full px-3 py-2 border rounded-lg">
+                </div>
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+                <button onclick="closeSiteConfigModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">Cancelar</button>
+                <button onclick="saveSiteConfigChanges()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Salvar Configurações</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edição de Produto -->
+    <div id="productEditModal" class="modal">
+        <div class="modal-content bg-white p-6 rounded-2xl max-w-lg w-full mx-4">
+            <h3 id="modalTitle" class="font-playfair text-2xl font-bold text-gray-800 mb-6 text-center">Editar Produto</h3>
+            
+            <div class="space-y-4">
+                <div id="categorySelectDiv" style="display: none;">
+                    <label class="block text-gray-700 font-medium mb-2">Categoria:</label>
+                    <select id="modalProductCategory" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="caipirinhas">Caipirinhas & Caipiroskas</option>
+                        <option value="especiais">Drinks Especiais</option>
+                        <option value="cervejas">Cervejas</option>
+                        <option value="sucos">Sucos Naturais</option>
+                        <option value="refrigerantes">Refrigerantes</option>
+                        <option value="energeticos">Energéticos & Águas</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Nome:</label>
+                    <input type="text" id="modalProductName" class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Preço:</label>
+                    <input type="text" id="modalProductPrice" class="w-full px-3 py-2 border rounded-lg" placeholder="R$ 15,90">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Descrição:</label>
+                    <textarea id="modalProductDescription" class="w-full px-3 py-2 border rounded-lg" rows="2"></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">URL da Imagem (opcional):</label>
+                    <input type="url" id="modalProductImage" class="w-full px-3 py-2 border rounded-lg" placeholder="https://exemplo.com/imagem.jpg">
+                    <p class="text-sm text-gray-500 mt-1">Deixe vazio para usar emoji</p>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Emoji (se não usar imagem):</label>
+                    <input type="text" id="modalProductEmoji" class="w-full px-3 py-2 border rounded-lg" maxlength="2" placeholder="🍹">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Ingredientes (separados por vírgula):</label>
+                    <input type="text" id="modalProductIngredients" class="w-full px-3 py-2 border rounded-lg" placeholder="Vodka, Limão, Açúcar">
+                </div>
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+                <button id="deleteBtn" onclick="deleteProduct()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">🗑️ Excluir</button>
+                <button onclick="closeProductModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">Cancelar</button>
+                <button id="saveBtn" onclick="saveProductChanges()" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Importe as funções necessárias do SDK do Firebase v12.3.0 (versão mais recente)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+
+        // Configuração do Firebase - Credenciais do projeto "projetoinvo"
+        const firebaseConfig = {
+            apiKey: "AIzaSyB0CQTGBq6vm9Ko-IYZeR6jBOND0OX12GE",
+            authDomain: "projetoinvo.firebaseapp.com",
+            projectId: "projetoinvo",
+            storageBucket: "projetoinvo.firebasestorage.app",
+            messagingSenderId: "963070287215",
+            appId: "1:963070287215:web:b25ff44048d79c87f69c9a",
+            measurementId: "G-XMWQ5B5JN6"
+        };
+
+        // Inicialize o Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+
+        // Inicialize o Cloud Firestore e obtenha uma referência ao serviço
+        const db = getFirestore(app);
+
+        let isFirebaseConnected = false;
+        let siteConfig = {};
+        let categories = {};
+        
+        // Configuração padrão do site
+        const defaultSiteConfig = {
+            siteName: 'Carta de Bebidas',
+            siteSubtitle: 'Descubra nossa seleção especial de drinks artesanais, cervejas premium e bebidas refrescantes',
+            headerImage: 'https://img.cdndsgni.com/preview/10576301.jpg',
+            footerText: 'Desfrute com moderação • Bebidas alcoólicas não devem ser consumidas por menores de 18 anos',
+            adminPassword: 'Vic20142015@',
+            searchPlaceholder: 'Pesquisar drinks...'
+        };
+
+        // Categorias padrão
+        const defaultCategories = {
+            caipirinhas: { name: 'Caipirinhas & Caipiroskas', order: 1, active: true },
+            especiais: { name: 'Drinks Especiais', order: 2, active: true },
+            cervejas: { name: 'Cervejas', order: 3, active: true },
+            sucos: { name: 'Sucos Naturais', order: 4, active: true },
+            refrigerantes: { name: 'Refrigerantes', order: 5, active: true },
+            energeticos: { name: 'Energéticos & Águas', order: 6, active: true }
+        };
+        
+        // Produtos padrão completos - 35 produtos organizados por categoria
+        const defaultProducts = [
+            // Caipirinhas & Caipiroskas (2 produtos)
+            { category: 'caipirinhas', name: 'Caipiroska', price: 'R$ 16,90', description: 'Vodka premium em diversos sabores: Kiwi, Morango, Kiwi c/ Morango, Limão, Limão c/ Tangerina, Abacaxi c/ Hortelã', emoji: '🍹', ingredients: 'Vodka, Kiwi, Morango, Limão, Tangerina, Abacaxi, Hortelã' },
+            { category: 'caipirinhas', name: 'Caipirinha', price: 'R$ 12,90', description: 'Tradicional brasileira em diversos sabores: Kiwi, Morango, Kiwi c/ Morango, Limão, Limão c/ Tangerina, Abacaxi c/ Hortelã', emoji: '🍸', ingredients: 'Cachaça, Kiwi, Morango, Limão, Tangerina, Abacaxi, Hortelã' },
+            
+            // Drinks Especiais (8 produtos)
+            { category: 'especiais', name: 'Lambedo de Voinha', price: 'R$ 29,90', description: 'Nossa especialidade premium com toque especial da casa', emoji: '⭐', ingredients: 'Licor 43, Hortelã, Água com Gás' },
+            { category: 'especiais', name: 'Mojito', price: 'R$ 18,90', description: 'Refrescante drink cubano com rum branco, hortelã fresca e limão', emoji: '🌿', ingredients: 'Rum Branco, Hortelã, Limão, Açúcar, Água com Gás' },
+            { category: 'especiais', name: 'Piña Colada', price: 'R$ 22,90', description: 'Cremoso drink tropical com rum, coco e abacaxi', emoji: '🥥', ingredients: 'Rum, Leite de Coco, Abacaxi, Gelo' },
+            { category: 'especiais', name: 'Sex on the Beach', price: 'R$ 19,90', description: 'Drink colorido e frutado com vodka, licor de pêssego e sucos', emoji: '🍑', ingredients: 'Vodka, Licor de Pêssego, Suco de Cranberry, Suco de Abacaxi' },
+            { category: 'especiais', name: 'Cosmopolitan', price: 'R$ 21,90', description: 'Elegante drink rosa com vodka, licor de laranja e cranberry', emoji: '💗', ingredients: 'Vodka, Cointreau, Suco de Cranberry, Limão' },
+            { category: 'especiais', name: 'Margarita', price: 'R$ 20,90', description: 'Clássico mexicano com tequila, limão e sal na borda', emoji: '🧂', ingredients: 'Tequila, Cointreau, Limão, Sal' },
+            { category: 'especiais', name: 'Daiquiri', price: 'R$ 17,90', description: 'Drink cubano refrescante com rum branco e limão', emoji: '🍋', ingredients: 'Rum Branco, Limão, Açúcar' },
+            { category: 'especiais', name: 'Long Island', price: 'R$ 24,90', description: 'Potente mix de destilados com cola e limão', emoji: '🥃', ingredients: 'Vodka, Rum, Gin, Tequila, Cointreau, Cola, Limão' },
+            
+            // Cervejas (7 produtos)
+            { category: 'cervejas', name: 'Chopp Heineken', price: 'R$ 18,90', description: 'Chopp gelado na pressão, cremoso e refrescante', emoji: '🍺', ingredients: 'Chopp Heineken' },
+            { category: 'cervejas', name: 'Cerveja Heineken Long Neck', price: 'R$ 12,90', description: 'Cerveja premium holandesa em garrafa long neck gelada', emoji: '🍻', ingredients: 'Cerveja Heineken' },
+            { category: 'cervejas', name: 'Cerveja Stella Artois', price: 'R$ 13,90', description: 'Cerveja belga premium com sabor refinado', emoji: '🍺', ingredients: 'Cerveja Stella Artois' },
+            { category: 'cervejas', name: 'Cerveja Corona', price: 'R$ 14,90', description: 'Cerveja mexicana leve, servida com limão', emoji: '🌮', ingredients: 'Cerveja Corona, Limão' },
+            { category: 'cervejas', name: 'Cerveja Budweiser', price: 'R$ 11,90', description: 'Cerveja americana clássica, refrescante', emoji: '🇺🇸', ingredients: 'Cerveja Budweiser' },
+            { category: 'cervejas', name: 'Cerveja Skol', price: 'R$ 8,90', description: 'Cerveja brasileira tradicional, gelada', emoji: '🇧🇷', ingredients: 'Cerveja Skol' },
+            { category: 'cervejas', name: 'Cerveja Brahma', price: 'R$ 8,90', description: 'Cerveja brasileira refrescante e saborosa', emoji: '🍺', ingredients: 'Cerveja Brahma' },
+            
+            // Sucos Naturais (7 produtos)
+            { category: 'sucos', name: 'Suco de Laranja', price: 'R$ 8,90', description: 'Suco natural de laranja fresco, rico em vitamina C', emoji: '🍊', ingredients: 'Laranja Natural' },
+            { category: 'sucos', name: 'Suco de Limão', price: 'R$ 7,90', description: 'Suco natural de limão refrescante e cítrico', emoji: '🍋', ingredients: 'Limão Natural, Açúcar' },
+            { category: 'sucos', name: 'Suco de Maracujá', price: 'R$ 9,90', description: 'Suco natural de maracujá doce e aromático', emoji: '💛', ingredients: 'Maracujá Natural' },
+            { category: 'sucos', name: 'Suco de Abacaxi', price: 'R$ 8,90', description: 'Suco natural de abacaxi tropical e doce', emoji: '🍍', ingredients: 'Abacaxi Natural' },
+            { category: 'sucos', name: 'Suco de Manga', price: 'R$ 9,90', description: 'Suco natural de manga cremoso e saboroso', emoji: '🥭', ingredients: 'Manga Natural' },
+            { category: 'sucos', name: 'Suco de Goiaba', price: 'R$ 8,90', description: 'Suco natural de goiaba doce e nutritivo', emoji: '🍑', ingredients: 'Goiaba Natural' },
+            { category: 'sucos', name: 'Suco de Caju', price: 'R$ 9,90', description: 'Suco natural de caju típico do nordeste', emoji: '🌰', ingredients: 'Caju Natural' },
+            
+            // Refrigerantes (6 produtos)
+            { category: 'refrigerantes', name: 'Coca-Cola', price: 'R$ 6,90', description: 'Refrigerante clássico gelado', emoji: '🥤', ingredients: 'Coca-Cola' },
+            { category: 'refrigerantes', name: 'Pepsi', price: 'R$ 6,90', description: 'Refrigerante de cola refrescante', emoji: '🥤', ingredients: 'Pepsi' },
+            { category: 'refrigerantes', name: 'Guaraná Antarctica', price: 'R$ 6,90', description: 'Refrigerante brasileiro sabor guaraná', emoji: '🇧🇷', ingredients: 'Guaraná Antarctica' },
+            { category: 'refrigerantes', name: 'Fanta Laranja', price: 'R$ 6,90', description: 'Refrigerante sabor laranja doce e cítrico', emoji: '🍊', ingredients: 'Fanta Laranja' },
+            { category: 'refrigerantes', name: 'Sprite', price: 'R$ 6,90', description: 'Refrigerante de limão refrescante', emoji: '🍋', ingredients: 'Sprite' },
+            { category: 'refrigerantes', name: 'Schweppes Citrus', price: 'R$ 7,90', description: 'Água tônica premium com toque cítrico', emoji: '🍋', ingredients: 'Schweppes Citrus' },
+            
+            // Energéticos & Águas (6 produtos)
+            { category: 'energeticos', name: 'Red Bull', price: 'R$ 12,90', description: 'Energético premium para dar energia', emoji: '⚡', ingredients: 'Red Bull' },
+            { category: 'energeticos', name: 'Monster Energy', price: 'R$ 11,90', description: 'Energético potente com sabor marcante', emoji: '👹', ingredients: 'Monster Energy' },
+            { category: 'energeticos', name: 'TNT Energy', price: 'R$ 8,90', description: 'Energético brasileiro refrescante', emoji: '💥', ingredients: 'TNT Energy' },
+            { category: 'energeticos', name: 'Água Mineral', price: 'R$ 4,90', description: 'Água mineral natural gelada', emoji: '💧', ingredients: 'Água Mineral' },
+            { category: 'energeticos', name: 'Água com Gás', price: 'R$ 5,90', description: 'Água mineral com gás refrescante', emoji: '🫧', ingredients: 'Água com Gás' },
+            { category: 'energeticos', name: 'Água de Coco', price: 'R$ 7,90', description: 'Água de coco natural hidratante', emoji: '🥥', ingredients: 'Água de Coco Natural' }
+        ];
+
+        // Inicializar Firebase automaticamente
+        async function initFirebase() {
+            try {
+                console.log('🔥 Conectando ao Firebase v12.3.0...');
+                updateFirebaseStatus('connecting');
+                
+                isFirebaseConnected = true;
+                updateFirebaseStatus(true);
+                
+                // Carregar configurações do site
+                await loadSiteConfig();
+                
+                // Carregar categorias
+                await loadCategories();
+                
+                // Carregar produtos do Firebase
+                await loadProductsFromFirebase();
+                
+                // Configurar listener para mudanças em tempo real
+                setupRealtimeListener();
+                
+                console.log('✅ Firebase v12.3.0 conectado com Analytics!');
+            } catch (error) {
+                console.error('❌ Erro ao conectar Firebase:', error);
+                isFirebaseConnected = false;
+                updateFirebaseStatus(false);
+                console.log('📦 Carregando dados padrão...');
+                loadDefaultData();
+            }
+        }
+
+        // Carregar configurações do site
+        async function loadSiteConfig() {
+            if (!db) return;
+            
+            try {
+                const configSnapshot = await getDocs(collection(db, 'siteConfig'));
+                
+                if (configSnapshot.empty) {
+                    // Salvar configuração padrão
+                    siteConfig = defaultSiteConfig;
+                    await saveSiteConfig();
+                } else {
+                    // Carregar configuração existente
+                    configSnapshot.forEach((doc) => {
+                        siteConfig = { ...defaultSiteConfig, ...doc.data() };
+                    });
+                }
+                
+                // Aplicar configurações na interface
+                applySiteConfig();
+                console.log('✅ Configurações do site carregadas!');
+            } catch (error) {
+                console.error('❌ Erro ao carregar configurações:', error);
+                siteConfig = defaultSiteConfig;
+                applySiteConfig();
+            }
+        }
+
+        // Carregar categorias
+        async function loadCategories() {
+            if (!db) return;
+            
+            try {
+                const categoriesSnapshot = await getDocs(collection(db, 'categories'));
+                
+                if (categoriesSnapshot.empty) {
+                    // Salvar categorias padrão
+                    categories = defaultCategories;
+                    await saveCategories();
+                } else {
+                    // Carregar categorias existentes
+                    categories = {};
+                    categoriesSnapshot.forEach((doc) => {
+                        categories[doc.id] = doc.data();
+                    });
+                }
+                
+                // Aplicar categorias na interface
+                applyCategories();
+                console.log('✅ Categorias carregadas!');
+            } catch (error) {
+                console.error('❌ Erro ao carregar categorias:', error);
+                categories = defaultCategories;
+                applyCategories();
+            }
+        }
+
+        // Salvar configurações do site
+        async function saveSiteConfig() {
+            if (!db) return;
+            
+            try {
+                // Limpar configurações existentes
+                const configSnapshot = await getDocs(collection(db, 'siteConfig'));
+                for (const doc of configSnapshot.docs) {
+                    await deleteDoc(doc.ref);
+                }
+                
+                // Salvar nova configuração
+                await addDoc(collection(db, 'siteConfig'), siteConfig);
+                console.log('💾 Configurações salvas no Firebase!');
+            } catch (error) {
+                console.error('❌ Erro ao salvar configurações:', error);
+            }
+        }
+
+        // Salvar categorias
+        async function saveCategories() {
+            if (!db) return;
+            
+            try {
+                for (const [categoryId, categoryData] of Object.entries(categories)) {
+                    await addDoc(collection(db, 'categories'), {
+                        id: categoryId,
+                        ...categoryData
+                    });
+                }
+                console.log('💾 Categorias salvas no Firebase!');
+            } catch (error) {
+                console.error('❌ Erro ao salvar categorias:', error);
+            }
+        }
+
+        // Aplicar configurações do site na interface
+        function applySiteConfig() {
+            // Título do site
+            document.title = siteConfig.siteName || 'Cardápio de Bebidas';
+            document.querySelector('h1').textContent = siteConfig.siteName || 'Carta de Bebidas';
+            
+            // Subtítulo
+            document.querySelector('header p').textContent = siteConfig.siteSubtitle || 'Descubra nossa seleção especial de drinks artesanais, cervejas premium e bebidas refrescantes';
+            
+            // Imagem de fundo do header
+            if (siteConfig.headerImage) {
+                document.querySelector('header .absolute.inset-0').style.backgroundImage = `url('${siteConfig.headerImage}')`;
+            }
+            
+            // Texto do footer
+            document.querySelector('footer p').textContent = siteConfig.footerText || 'Desfrute com moderação • Bebidas alcoólicas não devem ser consumidas por menores de 18 anos';
+            
+            // Placeholder da busca
+            document.getElementById('searchInput').placeholder = siteConfig.searchPlaceholder || 'Pesquisar drinks...';
+        }
+
+        // Aplicar categorias na interface
+        function applyCategories() {
+            const navContainer = document.querySelector('.flex.flex-wrap.justify-center.gap-2.py-4');
+            
+            // Limpar botões existentes (exceto "Todos")
+            const allButtons = navContainer.querySelectorAll('button');
+            allButtons.forEach((btn, index) => {
+                if (index > 0) btn.remove(); // Manter apenas o botão "Todos"
+            });
+            
+            // Ordenar categorias por ordem
+            const sortedCategories = Object.entries(categories)
+                .filter(([_, data]) => data.active)
+                .sort(([_, a], [__, b]) => (a.order || 0) - (b.order || 0));
+            
+            // Adicionar botões das categorias
+            sortedCategories.forEach(([categoryId, categoryData]) => {
+                const button = document.createElement('button');
+                button.onclick = () => showCategory(categoryId);
+                button.className = 'category-btn px-6 py-3 rounded-full font-medium text-sm bg-gray-100 text-gray-700 hover:bg-gray-200';
+                button.textContent = categoryData.name;
+                navContainer.appendChild(button);
+            });
+            
+            // Atualizar seções das categorias
+            updateCategorySections();
+        }
+
+        // Atualizar seções das categorias
+        function updateCategorySections() {
+            const mainContainer = document.querySelector('main');
+            
+            // Remover seções existentes
+            mainContainer.querySelectorAll('.category-section').forEach(section => section.remove());
+            
+            // Ordenar categorias por ordem
+            const sortedCategories = Object.entries(categories)
+                .filter(([_, data]) => data.active)
+                .sort(([_, a], [__, b]) => (a.order || 0) - (b.order || 0));
+            
+            // Criar seções para cada categoria
+            sortedCategories.forEach(([categoryId, categoryData]) => {
+                const section = document.createElement('section');
+                section.id = categoryId;
+                section.className = 'category-section mb-16';
+                section.innerHTML = `
+                    <h2 class="font-playfair text-4xl font-bold text-gray-800 mb-8 text-center">${categoryData.name}</h2>
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <!-- Produtos serão carregados aqui -->
+                    </div>
+                `;
+                mainContainer.appendChild(section);
+            });
+        }
+
+        // Carregar dados padrão (fallback)
+        function loadDefaultData() {
+            siteConfig = defaultSiteConfig;
+            categories = defaultCategories;
+            applySiteConfig();
+            applyCategories();
+            loadDefaultProducts();
+        }
+
+        // Atualizar status do Firebase na interface
+        function updateFirebaseStatus(status) {
+            const statusElement = document.getElementById('firebaseStatus');
+            if (status === true || status === 'connected') {
+                statusElement.textContent = '🟢 Firebase: Conectado';
+                statusElement.className = 'firebase-status firebase-connected';
+            } else if (status === 'connecting') {
+                statusElement.textContent = '🟡 Firebase: Conectando...';
+                statusElement.className = 'firebase-status firebase-connecting';
+            } else {
+                statusElement.textContent = '🔴 Firebase: Desconectado';
+                statusElement.className = 'firebase-status firebase-disconnected';
+            }
+        }
+
+        // Carregar produtos padrão
+        function loadDefaultProducts() {
+            defaultProducts.forEach(product => {
+                createProductFromData(product);
+            });
+        }
+
+        // Carregar produtos do Firebase
+        async function loadProductsFromFirebase() {
+            if (!db) {
+                console.log('📦 Firebase não disponível, carregando produtos padrão...');
+                loadDefaultProducts();
+                return;
+            }
+            
+            try {
+                console.log('📦 Tentando carregar produtos do Firestore...');
+                const querySnapshot = await getDocs(collection(db, 'produtos'));
+                
+                // Limpar produtos existentes
+                clearAllProducts();
+                
+                if (querySnapshot.empty) {
+                    // Se não há produtos no Firebase, carregar padrão e salvar
+                    console.log('📦 Nenhum produto encontrado, carregando e salvando produtos padrão...');
+                    loadDefaultProducts();
+                    
+                    // Salvar produtos padrão no Firebase em background
+                    setTimeout(async () => {
+                        for (const product of defaultProducts) {
+                            await saveProductToFirebase(product);
+                        }
+                        console.log('💾 Produtos padrão salvos no Firebase!');
+                    }, 1000);
+                } else {
+                    // Carregar produtos do Firebase
+                    console.log(`📦 Encontrados ${querySnapshot.size} produtos no Firebase`);
+                    querySnapshot.forEach((docSnapshot) => {
+                        const product = docSnapshot.data();
+                        product.firebaseId = docSnapshot.id;
+                        createProductFromData(product);
+                    });
+                }
+                
+                console.log('✅ Produtos carregados!');
+            } catch (error) {
+                console.error('❌ Erro ao carregar produtos:', error);
+                console.log('📦 Carregando produtos padrão como fallback...');
+                updateFirebaseStatus(false);
+                loadDefaultProducts();
+            }
+        }
+
+        // Salvar produto no Firebase
+        async function saveProductToFirebase(productData) {
+            if (!db) return null;
+            
+            try {
+                const docRef = await addDoc(collection(db, 'produtos'), {
+                    ...productData,
+                    createdAt: new Date().toISOString()
+                });
+                console.log('💾 Produto salvo no Firebase:', docRef.id);
+                return docRef.id;
+            } catch (error) {
+                console.error('❌ Erro ao salvar produto:', error);
+                return null;
+            }
+        }
+
+        // Atualizar produto no Firebase
+        async function updateProductInFirebase(firebaseId, productData) {
+            if (!db || !firebaseId) return;
+            
+            try {
+                await updateDoc(doc(db, 'produtos', firebaseId), {
+                    ...productData,
+                    updatedAt: new Date().toISOString()
+                });
+                console.log('✅ Produto atualizado no Firebase!');
+            } catch (error) {
+                console.error('❌ Erro ao atualizar produto:', error);
+            }
+        }
+
+        // Deletar produto do Firebase
+        async function deleteProductFromFirebase(firebaseId) {
+            if (!db || !firebaseId) return;
+            
+            try {
+                await deleteDoc(doc(db, 'produtos', firebaseId));
+                console.log('🗑️ Produto deletado do Firebase!');
+            } catch (error) {
+                console.error('❌ Erro ao deletar produto:', error);
+            }
+        }
+
+        // Configurar listener para mudanças em tempo real
+        function setupRealtimeListener() {
+            if (!db) return;
+            
+            // Listener para produtos
+            onSnapshot(collection(db, 'produtos'), (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === 'added') {
+                        // Produto adicionado por outro usuário
+                        const product = change.doc.data();
+                        product.firebaseId = change.doc.id;
+                        
+                        // Verificar se já existe localmente
+                        if (!document.querySelector(`[data-firebase-id="${product.firebaseId}"]`)) {
+                            createProductFromData(product);
+                            console.log('➕ Novo produto sincronizado:', product.name);
+                        }
+                    }
+                    if (change.type === 'modified') {
+                        // Produto modificado por outro usuário
+                        const product = change.doc.data();
+                        product.firebaseId = change.doc.id;
+                        updateLocalProduct(product);
+                        console.log('✏️ Produto atualizado:', product.name);
+                    }
+                    if (change.type === 'removed') {
+                        // Produto removido por outro usuário
+                        const productElement = document.querySelector(`[data-firebase-id="${change.doc.id}"]`);
+                        if (productElement) {
+                            productElement.remove();
+                            console.log('🗑️ Produto removido sincronizado');
+                        }
+                    }
+                });
+            });
+
+            // Listener para configurações do site
+            onSnapshot(collection(db, 'siteConfig'), (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === 'added' || change.type === 'modified') {
+                        siteConfig = { ...defaultSiteConfig, ...change.doc.data() };
+                        applySiteConfig();
+                        console.log('⚙️ Configurações atualizadas em tempo real');
+                    }
+                });
+            });
+
+            // Listener para categorias
+            onSnapshot(collection(db, 'categories'), (snapshot) => {
+                let categoriesChanged = false;
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === 'added' || change.type === 'modified' || change.type === 'removed') {
+                        categoriesChanged = true;
+                    }
+                });
+                
+                if (categoriesChanged) {
+                    // Recarregar todas as categorias
+                    categories = {};
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        if (data.id) {
+                            categories[data.id] = data;
+                        }
+                    });
+                    applyCategories();
+                    console.log('📂 Categorias atualizadas em tempo real');
+                }
+            });
+        }
+
+        // Criar produto a partir dos dados
+        function createProductFromData(productData) {
+            const { category, name, price, description, imageUrl, emoji, ingredients, firebaseId } = productData;
+            
+            const nextId = getNextProductId();
+            
+            const productHTML = `
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover relative" data-drink-id="${nextId}" ${firebaseId ? `data-firebase-id="${firebaseId}"` : ''}>
+                    <div class="edit-icon absolute top-2 right-2 bg-black bg-opacity-70 text-white w-8 h-8 rounded-full flex items-center justify-center cursor-pointer hover:bg-opacity-90 transition-all" style="display: none;" onclick="openProductEdit(this)">
+                        ✏️
+                    </div>
+                    <div class="h-48 overflow-hidden bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
+                        ${imageUrl ? 
+                            `<img src="${imageUrl}" alt="${name}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div class="w-full h-full flex items-center justify-center text-6xl" style="display: none;">${emoji || '🍹'}</div>` :
+                            `<div class="text-6xl">${emoji || '🍹'}</div>`
+                        }
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="font-playfair text-2xl font-semibold text-gray-800">${name}</h3>
+                            <span class="price-tag text-white px-4 py-2 rounded-full font-semibold">${price}</span>
+                        </div>
+                        <p class="text-gray-600 mb-4">${description}</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Adicionar à seção correta
+            const categorySection = document.getElementById(category);
+            if (categorySection) {
+                const grid = categorySection.querySelector('.grid');
+                grid.insertAdjacentHTML('beforeend', productHTML);
+                
+                // Adicionar ingredientes
+                const newProduct = grid.lastElementChild;
+                updateIngredients(newProduct, ingredients);
+            }
+        }
+
+        // Atualizar produto local com dados do Firebase
+        function updateLocalProduct(productData) {
+            const productElement = document.querySelector(`[data-firebase-id="${productData.firebaseId}"]`);
+            if (productElement) {
+                // Atualizar dados do produto
+                productElement.querySelector('h3').textContent = productData.name;
+                productElement.querySelector('.price-tag').textContent = productData.price;
+                productElement.querySelector('p').textContent = productData.description;
+                
+                // Atualizar imagem/emoji
+                const imageContainer = productElement.querySelector('.h-48');
+                if (productData.imageUrl) {
+                    imageContainer.innerHTML = `<img src="${productData.imageUrl}" alt="${productData.name}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                              <div class="w-full h-full flex items-center justify-center text-6xl" style="display: none;">${productData.emoji || '🍹'}</div>`;
+                } else {
+                    imageContainer.innerHTML = `<div class="text-6xl">${productData.emoji || '🍹'}</div>`;
+                }
+                
+                // Atualizar ingredientes
+                updateIngredients(productElement, productData.ingredients);
+            }
+        }
+
+        // Limpar todos os produtos
+        function clearAllProducts() {
+            document.querySelectorAll('.card-hover').forEach(product => {
+                product.remove();
+            });
+        }
+
+        function showCategory(category) {
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.add('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+            });
+            
+            event.target.classList.add('active');
+            event.target.classList.remove('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+            
+            document.querySelectorAll('.category-section').forEach(section => {
+                section.style.display = category === 'all' ? 'block' : 'none';
+            });
+            
+            if (category !== 'all') {
+                const targetSection = document.getElementById(category);
+                if (targetSection) targetSection.style.display = 'block';
+            }
+        }
+
+        function searchDrinks() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const allCards = document.querySelectorAll('.card-hover');
+            
+            allCards.forEach(card => {
+                if (searchTerm === '') {
+                    card.style.display = 'block';
+                    return;
+                }
+                
+                const drinkName = card.querySelector('h3').textContent.toLowerCase();
+                const description = card.querySelector('p').textContent.toLowerCase();
+                const ingredients = Array.from(card.querySelectorAll('.ingredient-tag')).map(tag => tag.textContent.toLowerCase()).join(' ');
+                
+                card.style.display = (drinkName.includes(searchTerm) || description.includes(searchTerm) || ingredients.includes(searchTerm)) ? 'block' : 'none';
+            });
+        }
+
+        function openModal(img) {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImage');
+            modal.style.display = 'block';
+            modalImg.src = img.src;
+            modalImg.alt = img.alt;
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('imageModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        document.getElementById('imageModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeAdminModal();
+                closeSiteConfigModal();
+                closeProductModal();
+            }
+        });
+
+        // Funções do Admin
+        function showAdminLogin() {
+            document.getElementById('adminModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminModal').style.display = 'none';
+            document.getElementById('adminPassword').value = '';
+            document.body.style.overflow = 'auto';
+        }
+
+        function checkAdminPassword() {
+            const password = document.getElementById('adminPassword').value;
+            const correctPassword = siteConfig.adminPassword || 'Vic20142015@';
+            if (password === correctPassword) {
+                closeAdminModal();
+                showEditIcons();
+                document.getElementById('exitEditorBtn').style.display = 'block';
+                
+                if (isFirebaseConnected) {
+                    alert('🎉 Modo editor ativado! Produtos serão salvos no Firebase automaticamente.');
+                } else {
+                    alert('⚠️ Modo editor ativado! Firebase desconectado - mudanças serão apenas locais.');
+                }
+            } else {
+                alert('❌ Senha incorreta!');
+                document.getElementById('adminPassword').value = '';
+            }
+        }
+
+        let currentEditingProduct = null;
+
+        function exitAdminMode() {
+            document.querySelectorAll('.edit-icon').forEach(icon => {
+                icon.style.display = 'none';
+            });
+            document.getElementById('exitEditorBtn').style.display = 'none';
+            document.getElementById('addProductBtn').style.display = 'none';
+            document.getElementById('siteConfigBtn').style.display = 'none';
+            alert('👋 Modo editor desativado!');
+        }
+
+        function showEditIcons() {
+            document.querySelectorAll('.edit-icon').forEach(icon => {
+                icon.style.display = 'flex';
+            });
+            document.getElementById('siteConfigBtn').style.display = 'block';
+            document.getElementById('addProductBtn').style.display = 'block';
+        }
+
+        // Funções para configurações do site
+        function openSiteConfig() {
+            // Preencher campos com valores atuais
+            document.getElementById('configSiteName').value = siteConfig.siteName || '';
+            document.getElementById('configSiteSubtitle').value = siteConfig.siteSubtitle || '';
+            document.getElementById('configHeaderImage').value = siteConfig.headerImage || '';
+            document.getElementById('configFooterText').value = siteConfig.footerText || '';
+            document.getElementById('configAdminPassword').value = siteConfig.adminPassword || '';
+            document.getElementById('configSearchPlaceholder').value = siteConfig.searchPlaceholder || '';
+            
+            document.getElementById('siteConfigModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSiteConfigModal() {
+            document.getElementById('siteConfigModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        async function saveSiteConfigChanges() {
+            // Atualizar configurações
+            siteConfig.siteName = document.getElementById('configSiteName').value.trim();
+            siteConfig.siteSubtitle = document.getElementById('configSiteSubtitle').value.trim();
+            siteConfig.headerImage = document.getElementById('configHeaderImage').value.trim();
+            siteConfig.footerText = document.getElementById('configFooterText').value.trim();
+            siteConfig.adminPassword = document.getElementById('configAdminPassword').value.trim();
+            siteConfig.searchPlaceholder = document.getElementById('configSearchPlaceholder').value.trim();
+            
+            // Aplicar mudanças na interface
+            applySiteConfig();
+            
+            // Salvar no Firebase se conectado
+            if (isFirebaseConnected) {
+                await saveSiteConfig();
+                alert('✅ Configurações salvas no Firebase!');
+            } else {
+                alert('⚠️ Configurações salvas localmente (Firebase desconectado)');
+            }
+            
+            closeSiteConfigModal();
+        }
+
+        function openAddProduct() {
+            currentEditingProduct = null;
+            
+            document.getElementById('modalTitle').textContent = 'Adicionar Novo Produto';
+            document.getElementById('categorySelectDiv').style.display = 'block';
+            document.getElementById('deleteBtn').style.display = 'none';
+            document.getElementById('saveBtn').textContent = 'Adicionar';
+            
+            // Limpar campos
+            document.getElementById('modalProductCategory').value = 'caipirinhas';
+            document.getElementById('modalProductName').value = '';
+            document.getElementById('modalProductPrice').value = '';
+            document.getElementById('modalProductDescription').value = '';
+            document.getElementById('modalProductImage').value = '';
+            document.getElementById('modalProductEmoji').value = '🍹';
+            document.getElementById('modalProductIngredients').value = '';
+            
+            document.getElementById('productEditModal').style.display = 'block';
+        }
+
+        function openProductEdit(editIcon) {
+            currentEditingProduct = editIcon.closest('.card-hover');
+            
+            document.getElementById('modalTitle').textContent = 'Editar Produto';
+            document.getElementById('categorySelectDiv').style.display = 'block';
+            document.getElementById('deleteBtn').style.display = 'block';
+            document.getElementById('saveBtn').textContent = 'Salvar';
+            
+            const name = currentEditingProduct.querySelector('h3').textContent;
+            const price = currentEditingProduct.querySelector('.price-tag').textContent;
+            const description = currentEditingProduct.querySelector('p').textContent;
+            
+            const imageContainer = currentEditingProduct.querySelector('.h-48');
+            const imgElement = imageContainer.querySelector('img');
+            const emojiElement = imageContainer.querySelector('.text-6xl');
+            
+            const ingredientTags = currentEditingProduct.querySelectorAll('.ingredient-tag');
+            const ingredients = Array.from(ingredientTags).map(tag => tag.textContent).join(', ');
+            
+            const currentCategory = getCurrentProductCategory(currentEditingProduct);
+            document.getElementById('modalProductCategory').value = currentCategory;
+            
+            document.getElementById('modalProductName').value = name;
+            document.getElementById('modalProductPrice').value = price;
+            document.getElementById('modalProductDescription').value = description;
+            document.getElementById('modalProductIngredients').value = ingredients;
+            
+            if (imgElement) {
+                document.getElementById('modalProductImage').value = imgElement.src;
+                document.getElementById('modalProductEmoji').value = '';
+            } else {
+                document.getElementById('modalProductImage').value = '';
+                document.getElementById('modalProductEmoji').value = emojiElement ? emojiElement.textContent : '';
+            }
+            
+            document.getElementById('productEditModal').style.display = 'block';
+        }
+
+        function closeProductModal() {
+            document.getElementById('productEditModal').style.display = 'none';
+            currentEditingProduct = null;
+        }
+
+        async function saveProductChanges() {
+            const newName = document.getElementById('modalProductName').value.trim();
+            const newPrice = document.getElementById('modalProductPrice').value.trim();
+            const newDescription = document.getElementById('modalProductDescription').value.trim();
+            const newImageUrl = document.getElementById('modalProductImage').value.trim();
+            const newEmoji = document.getElementById('modalProductEmoji').value.trim();
+            const newIngredients = document.getElementById('modalProductIngredients').value.trim();
+            
+            if (!newName || !newPrice || !newDescription) {
+                alert('❌ Por favor, preencha todos os campos obrigatórios!');
+                return;
+            }
+            
+            const productData = {
+                name: newName,
+                price: newPrice,
+                description: newDescription,
+                imageUrl: newImageUrl,
+                emoji: newEmoji,
+                ingredients: newIngredients,
+                category: document.getElementById('modalProductCategory').value
+            };
+            
+            if (currentEditingProduct) {
+                // Editando produto existente
+                const firebaseId = currentEditingProduct.dataset.firebaseId;
+                const newCategory = document.getElementById('modalProductCategory').value;
+                const oldCategory = getCurrentProductCategory(currentEditingProduct);
+                
+                // Atualizar no Firebase se conectado
+                if (isFirebaseConnected && firebaseId) {
+                    await updateProductInFirebase(firebaseId, productData);
+                }
+                
+                if (newCategory !== oldCategory) {
+                    moveProductToCategory(currentEditingProduct, newCategory, newName, newPrice, newDescription, newImageUrl, newEmoji, newIngredients);
+                } else {
+                    updateExistingProduct(currentEditingProduct, newName, newPrice, newDescription, newImageUrl, newEmoji, newIngredients);
+                }
+                
+                if (isFirebaseConnected) {
+                    alert('✅ Produto atualizado e salvo no Firebase!');
+                } else {
+                    alert('⚠️ Produto atualizado localmente (Firebase desconectado)');
+                }
+            } else {
+                // Criando novo produto
+                const category = document.getElementById('modalProductCategory').value;
+                
+                let firebaseId = null;
+                if (isFirebaseConnected) {
+                    firebaseId = await saveProductToFirebase(productData);
+                }
+                
+                createNewProduct(category, newName, newPrice, newDescription, newImageUrl, newEmoji, newIngredients, firebaseId);
+                
+                if (isFirebaseConnected) {
+                    alert('🎉 Produto adicionado e salvo no Firebase!');
+                } else {
+                    alert('⚠️ Produto adicionado localmente (Firebase desconectado)');
+                }
+            }
+            
+            closeProductModal();
+        }
+
+        function updateExistingProduct(product, name, price, description, imageUrl, emoji, ingredients) {
+            product.querySelector('h3').textContent = name;
+            product.querySelector('.price-tag').textContent = price;
+            product.querySelector('p').textContent = description;
+            
+            const imageContainer = product.querySelector('.h-48');
+            
+            if (imageUrl) {
+                imageContainer.innerHTML = `<img src="${imageUrl}" alt="${name}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                          <div class="w-full h-full flex items-center justify-center text-6xl" style="display: none;">${emoji || '🍹'}</div>`;
+            } else {
+                imageContainer.innerHTML = `<div class="text-6xl">${emoji || '🍹'}</div>`;
+            }
+            
+            updateIngredients(product, ingredients);
+        }
+
+        function createNewProduct(category, name, price, description, imageUrl, emoji, ingredients, firebaseId = null) {
+            const nextId = getNextProductId();
+            
+            const productHTML = `
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden card-hover relative" data-drink-id="${nextId}" ${firebaseId ? `data-firebase-id="${firebaseId}"` : ''}>
+                    <div class="edit-icon absolute top-2 right-2 bg-black bg-opacity-70 text-white w-8 h-8 rounded-full flex items-center justify-center cursor-pointer hover:bg-opacity-90 transition-all" style="display: flex;" onclick="openProductEdit(this)">
+                        ✏️
+                    </div>
+                    <div class="h-48 overflow-hidden bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
+                        ${imageUrl ? 
+                            `<img src="${imageUrl}" alt="${name}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div class="w-full h-full flex items-center justify-center text-6xl" style="display: none;">${emoji || '🍹'}</div>` :
+                            `<div class="text-6xl">${emoji || '🍹'}</div>`
+                        }
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="font-playfair text-2xl font-semibold text-gray-800">${name}</h3>
+                            <span class="price-tag text-white px-4 py-2 rounded-full font-semibold">${price}</span>
+                        </div>
+                        <p class="text-gray-600 mb-4">${description}</p>
+                        <div class="flex flex-wrap gap-2 mb-3" id="ingredients-${nextId}">
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const categorySection = document.getElementById(category);
+            const grid = categorySection.querySelector('.grid');
+            grid.insertAdjacentHTML('beforeend', productHTML);
+            
+            const newProduct = grid.lastElementChild;
+            updateIngredients(newProduct, ingredients);
+        }
+
+        function updateIngredients(product, ingredientsStr) {
+            const ingredientsContainer = product.querySelector('.flex.flex-wrap.gap-2.mb-3') || 
+                                       product.querySelector(`#ingredients-${product.dataset.drinkId}`);
+            
+            if (ingredientsContainer) {
+                ingredientsContainer.innerHTML = '';
+                
+                if (ingredientsStr) {
+                    const ingredients = ingredientsStr.split(',').map(ing => ing.trim()).filter(ing => ing);
+                    ingredients.forEach(ingredient => {
+                        const tag = document.createElement('span');
+                        tag.className = 'ingredient-tag px-3 py-1 rounded-full text-sm font-medium';
+                        tag.textContent = ingredient;
+                        ingredientsContainer.appendChild(tag);
+                    });
+                }
+            }
+        }
+
+        function getNextProductId() {
+            const allProducts = document.querySelectorAll('[data-drink-id]');
+            let maxId = 0;
+            allProducts.forEach(product => {
+                const id = parseInt(product.dataset.drinkId);
+                if (id > maxId) maxId = id;
+            });
+            return maxId + 1;
+        }
+
+        function getCurrentProductCategory(product) {
+            const sections = ['caipirinhas', 'especiais', 'cervejas', 'sucos', 'refrigerantes', 'energeticos'];
+            
+            for (let category of sections) {
+                const section = document.getElementById(category);
+                if (section && section.contains(product)) {
+                    return category;
+                }
+            }
+            return 'caipirinhas';
+        }
+
+        function moveProductToCategory(product, newCategory, name, price, description, imageUrl, emoji, ingredients) {
+            const firebaseId = product.dataset.firebaseId;
+            product.remove();
+            createNewProduct(newCategory, name, price, description, imageUrl, emoji, ingredients, firebaseId);
+        }
+
+        async function deleteProduct() {
+            if (!currentEditingProduct) return;
+            
+            if (confirm('🗑️ Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.')) {
+                const firebaseId = currentEditingProduct.dataset.firebaseId;
+                
+                if (isFirebaseConnected && firebaseId) {
+                    await deleteProductFromFirebase(firebaseId);
+                }
+                
+                currentEditingProduct.remove();
+                closeProductModal();
+                
+                if (isFirebaseConnected) {
+                    alert('✅ Produto excluído do Firebase!');
+                } else {
+                    alert('⚠️ Produto excluído localmente (Firebase desconectado)');
+                }
+            }
+        }
+
+        // Fechar modais clicando fora
+        document.getElementById('adminModal').addEventListener('click', function(e) {
+            if (e.target === this) closeAdminModal();
+        });
+
+        document.getElementById('siteConfigModal').addEventListener('click', function(e) {
+            if (e.target === this) closeSiteConfigModal();
+        });
+
+        document.getElementById('productEditModal').addEventListener('click', function(e) {
+            if (e.target === this) closeProductModal();
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            showCategory('all');
+            initFirebase();
+        });
+
+        // Tornar funções globais para uso nos event handlers HTML
+        window.showCategory = showCategory;
+        window.searchDrinks = searchDrinks;
+        window.openModal = openModal;
+        window.closeModal = closeModal;
+        window.showAdminLogin = showAdminLogin;
+        window.closeAdminModal = closeAdminModal;
+        window.checkAdminPassword = checkAdminPassword;
+        window.exitAdminMode = exitAdminMode;
+        window.openSiteConfig = openSiteConfig;
+        window.closeSiteConfigModal = closeSiteConfigModal;
+        window.saveSiteConfigChanges = saveSiteConfigChanges;
+        window.openAddProduct = openAddProduct;
+        window.openProductEdit = openProductEdit;
+        window.closeProductModal = closeProductModal;
+        window.saveProductChanges = saveProductChanges;
+        window.deleteProduct = deleteProduct;
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'987df99076392755',t:'MTc1OTM0MjgzNS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
